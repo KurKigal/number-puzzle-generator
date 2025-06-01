@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Puzzle Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #45a049;
+        }
+        
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .puzzle-area {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .grid-container {
+            flex: 1;
+            min-width: 500px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(15, 30px);
+            grid-template-rows: repeat(15, 30px);
+            gap: 1px;
+            background-color: #ddd;
+            border: 2px solid #333;
+            margin: 0 auto;
+            width: fit-content;
+        }
+        
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+        
+        .cell.black {
+            background-color: #333;
+        }
+        
+        .cell.hint {
+            background-color: #ffeb3b;
+            color: #d32f2f;
+        }
+        
+        .numbers-container {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .numbers-section {
+            margin-bottom: 20px;
+        }
+        
+        .numbers-title {
+            font-weight: bold;
+            color: #d32f2f;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .numbers-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .number-item {
+            background-color: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: 1px solid #90caf9;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        @media (max-width: 768px) {
+            .puzzle-area {
+                flex-direction: column;
+            }
+            
+            .grid {
+                grid-template-columns: repeat(15, 20px);
+                grid-template-rows: repeat(15, 20px);
+            }
+            
+            .cell {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔢 Number Puzzle Generator</h1>
+        
+        <div class="controls">
+            <button class="btn" id="generateBtn" onclick="generatePuzzle()">
+                🎲 Generate New Puzzle
+            </button>
+            <button class="btn" id="showSolutionBtn" onclick="toggleSolution()" disabled>
+                👁️ Show/Hide Solution
+            </button>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="puzzle-area">
+            <div class="grid-container">
+                <h3 style="text-align: center; margin-bottom: 15px;">15x15 Game Grid</h3>
+                <div class="grid" id="puzzleGrid">
+                    <!-- Grid cells will be created by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="numbers-container">
+                <h3 style="text-align: center; margin-bottom: 15px;">Numbers to Place</h3>
+                <div id="numbersArea">
+                    <!-- Numbers will be created by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPuzzle = null;
+        let showingSolution = false;
+
+        // Create grid
+        function createGrid() {
+            const grid = document.getElementById('puzzleGrid');
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < 225; i++) { // 15x15 = 225
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${Math.floor(i/15)}-${i%15}`;
+                grid.appendChild(cell);
+            }
+        }
+
+        // Generate puzzle
+        async function generatePuzzle() {
+            const generateBtn = document.getElementById('generateBtn');
+            const showSolutionBtn = document.getElementById('showSolutionBtn');
+            const status = document.getElementById('status');
+            
+            // Update UI
+            generateBtn.disabled = true;
+            generateBtn.textContent = '⏳ Generating...';
+            showSolutionBtn.disabled = true;
+            
+            showStatus('Generating puzzle... This may take a few seconds.', 'loading');
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentPuzzle = data;
+                    showingSolution = false;
+                    displayPuzzle(data);
+                    showStatus('✅ Puzzle generated successfully!', 'success');
+                    showSolutionBtn.disabled = false;
+                } else {
+                    showStatus('❌ Error: ' + (data.error || 'Unknown error'), 'error');
+                }
+            } catch (error) {
+                showStatus('❌ Connection error: ' + error.message, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = '🎲 Generate New Puzzle';
+            }
+        }
+
+        // Show status
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // Display puzzle
+        function displayPuzzle(puzzle) {
+            // Clear and update grid
+            updateGrid(puzzle);
+            
+            // Show numbers
+            displayNumbers(puzzle.available_numbers);
+        }
+
+        // Update grid
+        function updateGrid(puzzle) {
+            const blackCells = new Set(puzzle.black_cells.map(([r, c]) => `${r}-${c}`));
+            const hintCells = new Set();
+            
+            if (puzzle.hint_cells) {
+                puzzle.hint_cells.forEach(([r, c, val]) => {
+                    hintCells.add(`${r}-${c}`);
+                });
+            }
+            
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.getElementById(`cell-${row}-${col}`);
+                    const cellKey = `${row}-${col}`;
+                    
+                    cell.className = 'cell';
+                    cell.textContent = '';
+                    
+                    if (blackCells.has(cellKey)) {
+                        cell.classList.add('black');
+                    } else if (hintCells.has(cellKey)) {
+                        cell.classList.add('hint');
+                        const hintValue = puzzle.hint_cells.find(([r, c, val]) => 
+                            r === row && c === col)[2];
+                        cell.textContent = hintValue;
+                    } else if (showingSolution && puzzle.solution_grid) {
+                        // Show all digits including 0
+                        const value = puzzle.solution_grid[row][col];
+                        if (value !== undefined && value !== null) {
+                            cell.textContent = value;
+                        }
+                    } else if (!showingSolution && puzzle.puzzle_grid && 
+                              puzzle.puzzle_grid[row][col] !== "" && 
+                              puzzle.puzzle_grid[row][col] !== "BLACK") {
+                        cell.textContent = puzzle.puzzle_grid[row][col];
+                        if (puzzle.puzzle_grid[row][col] !== "") {
+                            cell.classList.add('hint');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Display numbers
+        function displayNumbers(availableNumbers) {
+            const numbersArea = document.getElementById('numbersArea');
+            numbersArea.innerHTML = '';
+            
+            // From 7 to 2 (largest to smallest)
+            for (let length = 7; length >= 2; length--) {
+                if (availableNumbers[length] && availableNumbers[length].length > 0) {
+                    const section = document.createElement('div');
+                    section.className = 'numbers-section';
+                    
+                    const title = document.createElement('div');
+                    title.className = 'numbers-title';
+                    title.textContent = `${length} DIGITS`;
+                    section.appendChild(title);
+                    
+                    const numbersList = document.createElement('div');
+                    numbersList.className = 'numbers-list';
+                    
+                    // Sort numbers from largest to smallest
+                    const sortedNumbers = availableNumbers[length].slice().sort((a, b) => {
+                        return parseInt(b) - parseInt(a);
+                    });
+                    
+                    sortedNumbers.forEach(number => {
+                        const numberItem = document.createElement('div');
+                        numberItem.className = 'number-item';
+                        numberItem.textContent = number;
+                        numbersList.appendChild(numberItem);
+                    });
+                    
+                    section.appendChild(numbersList);
+                    numbersArea.appendChild(section);
+                }
+            }
+        }
+
+        // Show/hide solution
+        function toggleSolution() {
+            if (!currentPuzzle) return;
+            
+            showingSolution = !showingSolution;
+            const btn = document.getElementById('showSolutionBtn');
+            
+            if (showingSolution) {
+                btn.textContent = '🙈 Hide Solution';
+                showStatus('🔍 Solution is now visible', 'success');
+            } else {
+                btn.textContent = '👁️ Show Solution';
+                showStatus('🤔 Solution hidden', 'success');
+            }
+            
+            updateGrid(currentPuzzle);
+        }
+
+        // Create grid when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            createGrid();
+        });
+    </script>
+</body>
+</html>
